@@ -39,9 +39,9 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
     // 2. pinata https://www.pinata.cloud
     // 3. nft.storage https://nft.storage
 
-    let vrfCoordinatorV2Address, subscriptionId
+    let vrfCoordinatorV2Mock, vrfCoordinatorV2Address, subscriptionId
     if (developmentChains.includes(network.name)) {
-        const vrfCoordinatorV2Mock = await ethers.getContract("VRFCoordinatorV2Mock")
+        vrfCoordinatorV2Mock = await ethers.getContract("VRFCoordinatorV2Mock")
         vrfCoordinatorV2Address = vrfCoordinatorV2Mock.address
         const tx = await vrfCoordinatorV2Mock.createSubscription()
         const txReceipt = await tx.wait(1)
@@ -67,6 +67,14 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
         log: true,
         waitConfirmations: network.config.blockConfirmations || 1,
     })
+
+    // VRF needs us to add a consumer now
+    if (developmentChains.includes(network.name)) {
+        await vrfCoordinatorV2Mock.addConsumer(subscriptionId, randomIpfsNft.address)
+    } else {
+        // now what?
+        console.log("Might need to add a VRF consumer here.")
+    }
     log("-----------------------")
     if (!developmentChains.includes(network.name) && process.env.ETHERSCAN_API_KEY) {
         log("Verifying...")
