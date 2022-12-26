@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "base64-sol/base64.sol";
 
+error ERC721Metadata__URI_QueryFor_NonExistentToken();
+
 contract DynamicSvgNft is ERC721 {
     // mint
     //store our SVG information somewhere
@@ -25,6 +27,7 @@ contract DynamicSvgNft is ERC721 {
         string memory lowSvg,
         string memory highSvg
     ) ERC721("Dynamic SVG NFT", "DSN") {
+        // "name", "symbol"
         s_tokenCounter = 0;
         i_lowImageUri = svgToImageUri(lowSvg);
         i_highImageUri = svgToImageUri(highSvg);
@@ -37,8 +40,9 @@ contract DynamicSvgNft is ERC721 {
     }
 
     function mintNft(int256 highValue) public {
-        s_tokenIdToHighValue[s_tokenCounter] = highValue;
         s_tokenCounter++;
+        s_tokenIdToHighValue[s_tokenCounter] = highValue;
+
         _safeMint(msg.sender, s_tokenCounter);
         emit CreatedNFT(s_tokenCounter, highValue);
     }
@@ -47,8 +51,11 @@ contract DynamicSvgNft is ERC721 {
         return "data:application/json;base64,";
     }
 
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_exists(tokenId), "URI Query for nonexistent token");
+    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+        // require(_exists(tokenId), "URI Query for nonexistent token");
+        if (!_exists(tokenId)) {
+            revert ERC721Metadata__URI_QueryFor_NonExistentToken();
+        }
         // string memory imageURI = "Hi There!";
         // data:image/svg+xml;base64, <-- for images
         // data:application/json;base64, <-- for json
@@ -66,9 +73,9 @@ contract DynamicSvgNft is ERC721 {
                     Base64.encode(
                         bytes(
                             abi.encodePacked(
-                                '{"name":',
+                                '{"name":"',
                                 name(),
-                                '", "description":"An NFT that changes based on the ChainLink Feed", ',
+                                '", "description":"An NFT that changes based on the Chainlink Feed", ',
                                 '"attributes": [{"trait_type": "coolness", "value": 100}], "image":"',
                                 imageURI,
                                 '"}'
@@ -77,5 +84,21 @@ contract DynamicSvgNft is ERC721 {
                     )
                 )
             );
+    }
+
+    function getLowSvg() public view returns (string memory) {
+        return i_lowImageUri;
+    }
+
+    function getHighSvg() public view returns (string memory) {
+        return i_highImageUri;
+    }
+
+    function getPriceFeed() public view returns (AggregatorV3Interface) {
+        return i_priceFeed;
+    }
+
+    function getTokenCounter() public view returns (uint256) {
+        return s_tokenCounter;
     }
 }
